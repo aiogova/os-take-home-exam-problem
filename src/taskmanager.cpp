@@ -131,7 +131,7 @@ bool isNumber(const std::string& str)
 
 void clearGraphics(AppData* data)
 {
-    for (auto g : data->graphics)
+    for (GProcess* g : data->graphics)
     {
         SDL_DestroyTexture(g->pid_texture);
         SDL_DestroyTexture(g->name_texture);
@@ -144,7 +144,7 @@ void clearGraphics(AppData* data)
 
 void clearProcesses(AppData* data)
 {
-    for (auto p : data->processes)
+    for (ProcessInfo* p : data->processes)
     {
         delete p;
     }
@@ -250,26 +250,26 @@ void buildGraphics(SDL_Renderer* renderer, AppData* data)
 
         g->pid_rect =
         {
-            20,
-            60 + i * 35 + data->scroll_offset,
-            0,
-            0
+            g->pid_rect.x = 20,
+            g->pid_rect.y = 60 + i * 35 + data->scroll_offset,
+            g->pid_rect.w = 0,
+            g->pid_rect.h = 0
         };
 
         g->name_rect =
         {
-            150,
-            60 + i * 35 + data->scroll_offset,
-            0,
-            0
+            g->name_rect.x = 150,
+            g->name_rect.y = 60 + i * 35 + data->scroll_offset,
+            g->name_rect.w = 0,
+            g->name_rect.h = 0
         };
 
         g->mem_rect =
         {
-            600,
-            60 + i * 35 + data->scroll_offset,
-            0,
-            0
+            g->mem_rect.x = 600,
+            g->mem_rect.y = 60 + i * 35 + data->scroll_offset,
+            g->mem_rect.w = 0,
+            g->mem_rect.h = 0
         };
 
         SDL_QueryTexture(g->pid_texture, NULL, NULL, &g->pid_rect.w, &g->pid_rect.h);
@@ -327,7 +327,7 @@ void render(SDL_Renderer* renderer, AppData* data)
     SDL_DestroyTexture(mem_label);
 
     // Draw processes
-    for (auto g : data->graphics)
+    for (GProcess* g : data->graphics)
     {
         SDL_RenderCopy(renderer, g->pid_texture, NULL, &g->pid_rect);
 
