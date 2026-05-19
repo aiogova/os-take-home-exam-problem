@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <dirent.h>
 #include <cstdint>
+#include <cstdio>
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
@@ -18,6 +19,7 @@ typedef struct ProcessInfo
 {
     int pid;
     std::string name;
+    float cpu_percent;
     long memory_kb;
 } ProcessInfo;
 
@@ -25,10 +27,12 @@ typedef struct GProcess // graphical process
 {
     SDL_Texture* pid_texture;
     SDL_Texture* name_texture;
+    SDL_Texture* cpu_texture;
     SDL_Texture* mem_texture;
 
     SDL_Rect pid_rect;
     SDL_Rect name_rect;
+    SDL_Rect cpu_rect;
     SDL_Rect mem_rect;
 } GProcess;
 
@@ -66,7 +70,7 @@ int main(int argc, char* argv[])
     AppData data;
 
     // Load font
-    data.font = TTF_OpenFont("resrc/fonts/OpenSans-Regular.ttf", 20);
+    data.font = TTF_OpenFont("resrc/fonts/OpenSans-Regular.ttf", 24);
 
     // Load the processes
     loadProcesses(&data);
@@ -149,6 +153,7 @@ void clearGraphics(AppData* data)
     {
         SDL_DestroyTexture(g->pid_texture);
         SDL_DestroyTexture(g->name_texture);
+        SDL_DestroyTexture(g->cpu_texture);
         SDL_DestroyTexture(g->mem_texture);
         delete g;
     }
@@ -168,83 +173,40 @@ void clearProcesses(AppData* data)
 
 void loadProcesses(AppData* data)
 {
-    // Clear out old processes
+    // Clear old process list
     clearProcesses(data);
 
-    // Open /proc
-    DIR* proc = opendir("/proc");
+    // Run the ps command
+    FILE* pipe = popen("ps -eo pid,comm,pcpu,rss --no-headers --sort=-pcpu", "r");
 
-    // If /proc didn't open correctly (NULL), then return
-    if (!proc) 
+    // If ps failed, stop
+    if (!pipe)
     {
         return;
     }
 
-    struct dirent* entry;
+    char buffer[256];
 
-    // Loop through all the folders and files in /proc
-    while ((entry = readdir(proc)) != NULL)
+    // Read output line-by-line
+    while (fgets(buffer, sizeof(buffer), pipe))
     {
-        // Get the folder name
-        std::string dir_name = entry->d_name;
-
-        // Skip the non-numeric folders (only numeric folders are processes)
-        if (!isNumber(dir_name))
-        {
-            continue;
-        }
-
-        // Convert the PID to an int (the directory name is the PID)
-        int pid = std::stoi(dir_name);
-
-        // Build status file path
-        std::string status_path = "/proc/" + dir_name + "/status";
-
-        // Open file (read process status info)
-        std::ifstream file(status_path);
-
-        // If file wasn't opened successfully
-        if (!file.is_open())
-        {
-            continue;
-        }
+        std::stringstream ss(buffer);
 
         // Create process object
         ProcessInfo* process = new ProcessInfo();
-        process->pid = pid;
-        process->memory_kb = 0;
 
-        std::string line;
-
-        // Read file line by line
-        while (std::getline(file, line))
-        {
-            // Find process name
-            if (line.rfind("Name:", 0) == 0)
-            {
-                process->name = line.substr(6);
-            }
-
-            // Find memory usage
-            if (line.rfind("VmRSS:", 0) == 0)
-            {
-                std::stringstream ss(line);
-
-                std::string temp;
-                ss >> temp;
-                ss >> process->memory_kb;
-            }
-        }
+        // Parse:
+        // PID COMMAND CPU MEMORY
+        ss >> process->pid >> process->name >> process->cpu_percent >> process->memory_kb;
 
         // Add the process to our list
         data->processes.push_back(process);
     }
 
-    // Close directory
-    closedir(proc);
+    pclose(pipe);
 
     // Sort the processes
-    std::sort(data->processes.begin(), data->processes.end(), compareProcesses);
+    // std::sort(data->processes.begin(), data->processes.end(), compareProcesses);
 }
 
 SDL_Texture* createText(SDL_Renderer* renderer, TTF_Font* font, std::string text, SDL_Color color) // convert text to SDL texture
@@ -277,26 +239,33 @@ void buildGraphics(SDL_Renderer* renderer, AppData* data) // converts the proces
         // Create textures
         g->pid_texture = createText(renderer, data->font, std::to_string(p->pid), color);
         g->name_texture = createText(renderer, data->font, p->name, color);
+        g->cpu_texture = createText(renderer, data->font, std::to_string(p->cpu_percent) + "%", color);
         g->mem_texture = createText(renderer, data->font, std::to_string(p->memory_kb) + " KB", color);
 
         // Position rectangles
         g->pid_rect.x = 20;
-        g->pid_rect.y = 60 + i * 35 + data->scroll_offset;
+        g->pid_rect.y = 70 + i * 35 + data->scroll_offset;
         g->pid_rect.w = 0;
         g->pid_rect.h = 0;
 
         g->name_rect.x = 150;
-        g->name_rect.y = 60 + i * 35 + data->scroll_offset;
+        g->name_rect.y = 70 + i * 35 + data->scroll_offset;
         g->name_rect.w = 0;
         g->name_rect.h = 0;
+
+        g->cpu_rect.x = 450;
+        g->cpu_rect.y = 70 + i * 35 + data->scroll_offset;
+        g->cpu_rect.w = 0;
+        g->cpu_rect.h = 0;
         
-        g->mem_rect.x = 600;
-        g->mem_rect.y = 60 + i * 35 + data->scroll_offset;
+        g->mem_rect.x = 700;
+        g->mem_rect.y = 70 + i * 35 + data->scroll_offset;
         g->mem_rect.w = 0;
         g->mem_rect.h = 0;
         
         SDL_QueryTexture(g->pid_texture, NULL, NULL, &g->pid_rect.w, &g->pid_rect.h);
         SDL_QueryTexture(g->name_texture, NULL, NULL, &g->name_rect.w, &g->name_rect.h);
+        SDL_QueryTexture(g->cpu_texture, NULL, NULL, &g->cpu_rect.w, &g->cpu_rect.h);
         SDL_QueryTexture(g->mem_texture, NULL, NULL, &g->mem_rect.w, &g->mem_rect.h);
 
         // Store graphical entry
@@ -329,22 +298,27 @@ void render(SDL_Renderer* renderer, AppData* data) // draws everything
     // Column labels
     SDL_Texture* pid_label = createText(renderer, data->font, "PID", black);
     SDL_Texture* name_label = createText(renderer, data->font, "Process Name", black);
+    SDL_Texture* cpu_label = createText(renderer, data->font, "CPU %", black);
     SDL_Texture* mem_label = createText(renderer, data->font, "Memory Usage", black);
 
     SDL_Rect pid_rect = {20, 40, 0, 0};
     SDL_Rect name_rect = {150, 40, 0, 0};
-    SDL_Rect mem_rect = {600, 40, 0, 0};
+    SDL_Rect cpu_rect = {450, 40, 0, 0};
+    SDL_Rect mem_rect = {700, 40, 0, 0};
 
     SDL_QueryTexture(pid_label, NULL, NULL, &pid_rect.w, &pid_rect.h);
     SDL_QueryTexture(name_label, NULL, NULL, &name_rect.w, &name_rect.h);
+    SDL_QueryTexture(cpu_label, NULL, NULL, &cpu_rect.w, &cpu_rect.h);
     SDL_QueryTexture(mem_label, NULL, NULL, &mem_rect.w, &mem_rect.h);
 
     SDL_RenderCopy(renderer, pid_label, NULL, &pid_rect);
     SDL_RenderCopy(renderer, name_label, NULL, &name_rect);
+    SDL_RenderCopy(renderer, cpu_label, NULL, &cpu_rect);
     SDL_RenderCopy(renderer, mem_label, NULL, &mem_rect);
 
     SDL_DestroyTexture(pid_label);
     SDL_DestroyTexture(name_label);
+    SDL_DestroyTexture(cpu_label);
     SDL_DestroyTexture(mem_label);
 
     // Draw processes
@@ -352,6 +326,7 @@ void render(SDL_Renderer* renderer, AppData* data) // draws everything
     {
         SDL_RenderCopy(renderer, g->pid_texture, NULL, &g->pid_rect);
         SDL_RenderCopy(renderer, g->name_texture, NULL, &g->name_rect);
+        SDL_RenderCopy(renderer, g->cpu_texture, NULL, &g->cpu_rect);
         SDL_RenderCopy(renderer, g->mem_texture, NULL, &g->mem_rect);
     }
 
