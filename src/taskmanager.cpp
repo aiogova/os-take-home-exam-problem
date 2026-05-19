@@ -19,8 +19,10 @@
 typedef struct ProcessInfo
 {
     int pid;
+    std::string user;
     std::string name;
     bool foreground;
+    bool user_process;
     float cpu_percent;
     long memory_kb;
 } ProcessInfo;
@@ -197,7 +199,7 @@ void loadProcesses(AppData* data)
     clearProcesses(data);
 
     // Run the ps command
-    FILE* pipe = popen("ps -eo pid,stat,comm,pcpu,rss --no-headers --sort=-pcpu", "r");
+    FILE* pipe = popen("ps -eo user,pid,stat,comm,pcpu,rss --no-headers --sort=-pcpu", "r");
 
     // If ps failed, stop
     if (!pipe)
@@ -218,8 +220,9 @@ void loadProcesses(AppData* data)
         // Parse:
         // PID STAT COMMAND CPU MEMORY
         std::string stat;
-        ss >> process->pid >> stat >> process->name >> process->cpu_percent >> process->memory_kb;
+        ss >> process->user >> process->pid >> stat >> process->name >> process->cpu_percent >> process->memory_kb;
 
+        process->user_process = (process->user != "root");
         process->foreground = (stat.find('+') != std::string::npos);
 
         // Add the process to our list
@@ -259,8 +262,8 @@ void buildGraphics(SDL_Renderer* renderer, AppData* data) // converts the proces
         // Create graphical object
         GProcess* g = new GProcess();
 
-        // Assign icons
-        if (p->foreground)
+        // Assign icons (processes are categorized by those that are running under the user account, and those that are running under root or any other account)
+        if (p->user_process)
         {
             g->icon_texture = data->foreground_icon;
         }
