@@ -122,15 +122,7 @@ int main(int argc, char* argv[])
         // Check if hovering over buttons
         bool hovering_button = false;
 
-        if (
-            (mouse_x >= 20 && mouse_x <= 200 &&
-            mouse_y >= 45 && mouse_y <= 85)
-
-            ||
-
-            (mouse_x >= 220 && mouse_x <= 440 &&
-            mouse_y >= 45 && mouse_y <= 85)
-        )
+        if ((mouse_x >= 20 && mouse_x <= 200 && mouse_y >= 45 + data.scroll_offset && mouse_y <= 85 + data.scroll_offset) || (mouse_x >= 220 && mouse_x <= 440 && mouse_y >= 45 + data.scroll_offset && mouse_y <= 85 + data.scroll_offset))
         {
             hovering_button = true;
         }
@@ -160,8 +152,7 @@ int main(int argc, char* argv[])
                 int mouse_y = event.button.y;
 
                 // CPU button
-                if (mouse_x >= 20 && mouse_x <= 200 &&
-                    mouse_y >= 45 && mouse_y <= 85)
+                if (mouse_x >= 20 && mouse_x <= 200 && mouse_y >= 45 + data.scroll_offset && mouse_y <= 85 + data.scroll_offset)
                 {
                     data.current_sort = SORT_CPU;
 
@@ -170,8 +161,7 @@ int main(int argc, char* argv[])
                 }
 
                 // Memory button
-                if (mouse_x >= 220 && mouse_x <= 440 &&
-                    mouse_y >= 45 && mouse_y <= 85)
+                if (mouse_x >= 220 && mouse_x <= 440 && mouse_y >= 45 + data.scroll_offset && mouse_y <= 85 + data.scroll_offset)
                 {
                     data.current_sort = SORT_MEMORY;
 
@@ -408,8 +398,8 @@ void render(SDL_Renderer* renderer, AppData* data) // draws everything
     SDL_Color black = {0,0,0};
 
     // Sort buttons
-    SDL_Rect cpu_button = {20, 45, 180, 40};
-    SDL_Rect mem_button = {220, 45, 220, 40};
+    SDL_Rect cpu_button = {20, 45 + data->scroll_offset, 180, 40};
+    SDL_Rect mem_button = {220, 45 + data->scroll_offset, 220, 40};
 
     // CPU button color
     if (data->current_sort == SORT_CPU)
@@ -435,20 +425,16 @@ void render(SDL_Renderer* renderer, AppData* data) // draws everything
 
     SDL_RenderFillRect(renderer, &mem_button);
 
-    SDL_Texture* cpu_sort_text =
-    createText(renderer, data->font, "Sort by CPU", black);
+    SDL_Texture* cpu_sort_text = createText(renderer, data->font, "Sort by CPU", black);
 
-    SDL_Texture* mem_sort_text =
-        createText(renderer, data->font, "Sort by Memory", black);
+    SDL_Texture* mem_sort_text = createText(renderer, data->font, "Sort by Memory", black);
 
-    SDL_Rect cpu_sort_rect = {35, 55, 0, 0};
-    SDL_Rect mem_sort_rect = {235, 55, 0, 0};
+    SDL_Rect cpu_sort_rect = {35, 55 + data->scroll_offset, 0, 0};
+    SDL_Rect mem_sort_rect = {235, 55 + data->scroll_offset, 0, 0};
 
-    SDL_QueryTexture(cpu_sort_text, NULL, NULL,
-        &cpu_sort_rect.w, &cpu_sort_rect.h);
+    SDL_QueryTexture(cpu_sort_text, NULL, NULL, &cpu_sort_rect.w, &cpu_sort_rect.h);
 
-    SDL_QueryTexture(mem_sort_text, NULL, NULL,
-        &mem_sort_rect.w, &mem_sort_rect.h);
+    SDL_QueryTexture(mem_sort_text, NULL, NULL, &mem_sort_rect.w, &mem_sort_rect.h);
 
     SDL_RenderCopy(renderer, cpu_sort_text, NULL, &cpu_sort_rect);
     SDL_RenderCopy(renderer, mem_sort_text, NULL, &mem_sort_rect);
@@ -459,7 +445,7 @@ void render(SDL_Renderer* renderer, AppData* data) // draws everything
     // Header
     SDL_Texture* title = createText(renderer, data->font, "Task Manager", black);
 
-    SDL_Rect title_rect = {20, 10, 0, 0};
+    SDL_Rect title_rect = {20, 10 + data->scroll_offset, 0, 0};
 
     SDL_QueryTexture(title, NULL, NULL, &title_rect.w, &title_rect.h);
 
@@ -474,10 +460,10 @@ void render(SDL_Renderer* renderer, AppData* data) // draws everything
     SDL_Texture* cpu_label = createText(renderer, data->font, "CPU %", black);
     SDL_Texture* mem_label = createText(renderer, data->font, "Memory Usage", black);
 
-    SDL_Rect pid_rect = {50, 85, 0, 0};
-    SDL_Rect name_rect = {170, 85, 0, 0};
-    SDL_Rect cpu_rect = {470, 85, 0, 0};
-    SDL_Rect mem_rect = {720, 85, 0, 0};
+    SDL_Rect pid_rect = {50, 85 + data->scroll_offset, 0, 0};
+    SDL_Rect name_rect = {170, 85 + data->scroll_offset, 0, 0};
+    SDL_Rect cpu_rect = {470, 85 + data->scroll_offset, 0, 0};
+    SDL_Rect mem_rect = {720, 85 + data->scroll_offset, 0, 0};
 
     SDL_QueryTexture(pid_label, NULL, NULL, &pid_rect.w, &pid_rect.h);
     SDL_QueryTexture(name_label, NULL, NULL, &name_rect.w, &name_rect.h);
