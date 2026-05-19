@@ -6,6 +6,7 @@
 #include <sstream>
 #include <algorithm>
 #include <dirent.h>
+#include <cstdint>
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
@@ -13,14 +14,14 @@
 #define WIDTH 1000
 #define HEIGHT 800
 
-struct ProcessInfo
+typedef struct ProcessInfo
 {
     int pid;
     std::string name;
     long memory_kb;
-};
+} ProcessInfo;
 
-struct GProcess // graphical process
+typedef struct GProcess // graphical process
 {
     SDL_Texture* pid_texture;
     SDL_Texture* name_texture;
@@ -29,9 +30,9 @@ struct GProcess // graphical process
     SDL_Rect pid_rect;
     SDL_Rect name_rect;
     SDL_Rect mem_rect;
-};
+} GProcess;
 
-struct AppData
+typedef struct AppData
 {
     TTF_Font* font;
 
@@ -39,7 +40,7 @@ struct AppData
     std::vector<GProcess*> graphics;
 
     int scroll_offset = 0;
-};
+} AppData;
 
 bool isNumber(const std::string& str);
 bool compareProcesses(ProcessInfo* a, ProcessInfo* b);
@@ -70,7 +71,7 @@ int main(int argc, char* argv[])
 
     bool running = true;
 
-    Uint32 last_update = SDL_GetTicks();
+    uint32_t last_update = SDL_GetTicks();
 
     while (running)
     {
@@ -91,7 +92,7 @@ int main(int argc, char* argv[])
             }
         }
 
-        Uint32 current = SDL_GetTicks();
+        uint32_t current = SDL_GetTicks();
 
         if (current - last_update > 500)
         {
