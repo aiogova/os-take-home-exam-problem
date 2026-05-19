@@ -173,6 +173,24 @@ int main(int argc, char* argv[])
             if (event.type == SDL_MOUSEWHEEL)
             {
                 data.scroll_offset += event.wheel.y * 20;
+
+                // Prevent scrolling too far down
+                if (data.scroll_offset > 0)
+                {
+                    data.scroll_offset = 0;
+                }
+
+                // Calculate bottom limit
+                int content_height = 120 + (data.processes.size() * 35);
+
+                int min_scroll = HEIGHT - content_height;
+
+                // Prevent scrolling too far up
+                if (data.scroll_offset < min_scroll)
+                {
+                    data.scroll_offset = min_scroll;
+                }
+
                 buildGraphics(renderer, &data);
             }
         }
@@ -443,7 +461,7 @@ void render(SDL_Renderer* renderer, AppData* data) // draws everything
     SDL_DestroyTexture(mem_sort_text);
 
     // Header
-    SDL_Texture* title = createText(renderer, data->font, "Task Manager", black);
+    SDL_Texture* title = createText(renderer, data->font, "OS Task Manager", black);
 
     SDL_Rect title_rect = {20, 10 + data->scroll_offset, 0, 0};
 
