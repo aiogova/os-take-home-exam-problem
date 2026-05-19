@@ -42,6 +42,7 @@ struct AppData
 };
 
 bool isNumber(const std::string& str);
+bool compareProcesses(ProcessInfo* a, ProcessInfo* b);
 void clearGraphics(AppData* data);
 void clearProcesses(AppData* data);
 void loadProcesses(AppData* data);
@@ -129,6 +130,11 @@ bool isNumber(const std::string& str)
     return true;
 }
 
+bool compareProcesses(ProcessInfo* a, ProcessInfo* b)
+{
+    return a->memory_kb > b->memory_kb;
+}
+
 void clearGraphics(AppData* data)
 {
     for (GProcess* g : data->graphics)
@@ -213,10 +219,7 @@ void loadProcesses(AppData* data)
 
     closedir(proc);
 
-    std::sort(data->processes.begin(), data->processes.end(), [](ProcessInfo* a, ProcessInfo* b)
-    {
-        return a->memory_kb > b->memory_kb;
-    });
+    std::sort(data->processes.begin(), data->processes.end(), compareProcesses);
 }
 
 SDL_Texture* createText(SDL_Renderer* renderer, TTF_Font* font, std::string text, SDL_Color color)
