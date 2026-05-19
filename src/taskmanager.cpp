@@ -88,6 +88,9 @@ int main(int argc, char* argv[])
     // Create app state
     AppData data;
 
+    SDL_Cursor* arrow_cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
+    SDL_Cursor* hand_cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
+
     // Load font
     data.font = TTF_OpenFont("resrc/fonts/OpenSans-Regular.ttf", 24);
 
@@ -112,6 +115,36 @@ int main(int argc, char* argv[])
 
     while (running)
     {
+        // Mouse position
+        int mouse_x, mouse_y;
+        SDL_GetMouseState(&mouse_x, &mouse_y);
+
+        // Check if hovering over buttons
+        bool hovering_button = false;
+
+        if (
+            (mouse_x >= 20 && mouse_x <= 200 &&
+            mouse_y >= 45 && mouse_y <= 85)
+
+            ||
+
+            (mouse_x >= 220 && mouse_x <= 440 &&
+            mouse_y >= 45 && mouse_y <= 85)
+        )
+        {
+            hovering_button = true;
+        }
+
+        // Change cursor
+        if (hovering_button)
+        {
+            SDL_SetCursor(hand_cursor);
+        }
+        else
+        {
+            SDL_SetCursor(arrow_cursor);
+        }
+
         SDL_Event event;
 
         while (SDL_PollEvent(&event))
@@ -177,6 +210,9 @@ int main(int argc, char* argv[])
 
     SDL_DestroyTexture(data.foreground_icon);
     SDL_DestroyTexture(data.background_icon);
+
+    SDL_FreeCursor(arrow_cursor);
+    SDL_FreeCursor(hand_cursor);
 
     TTF_CloseFont(data.font);
 
