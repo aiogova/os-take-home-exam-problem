@@ -8,7 +8,7 @@ SRCDIR= src
 OBJDIR= obj
 BINDIR= bin
 
-OBJS= $(addprefix $(OBJDIR)/, task_manager.o)
+OBJS= $(addprefix $(OBJDIR)/, taskmanager.o)
 EXEC= $(addprefix $(BINDIR)/, taskmanager)
 
 # CREATE DIRECTORIES (IF THEY DON'T EXIST)
