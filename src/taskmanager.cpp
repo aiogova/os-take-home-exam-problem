@@ -317,7 +317,7 @@ void buildGraphics(SDL_Renderer* renderer, AppData* data) // converts the proces
 void render(SDL_Renderer* renderer, AppData* data) // draws everything
 {
     // Background color
-    SDL_SetRenderDrawColor(renderer, 230, 230, 230, 255);
+    SDL_SetRenderDrawColor(renderer, 240, 247, 255, 255);
 
     // Clear screen (erase previous frame)
     SDL_RenderClear(renderer);
@@ -363,8 +363,30 @@ void render(SDL_Renderer* renderer, AppData* data) // draws everything
     SDL_DestroyTexture(mem_label);
 
     // Draw processes
-    for (GProcess* g : data->graphics)
+    for (int i = 0; i < data->graphics.size(); i++)
     {
+        GProcess* g = data->graphics[i];
+
+        // Zebra stripe background
+        SDL_Rect row_rect;
+        row_rect.x = 0;
+        row_rect.y = g->pid_rect.y - 2;
+        row_rect.w = WIDTH;
+        row_rect.h = 32;
+
+        // Alternate row colors
+        if (i % 2 == 0)
+        {
+            SDL_SetRenderDrawColor(renderer, 235, 245, 255, 255);
+        }
+        else
+        {
+            SDL_SetRenderDrawColor(renderer, 220, 235, 250, 255);
+        }
+
+        SDL_RenderFillRect(renderer, &row_rect);
+
+        // Draw process info on top
         SDL_RenderCopy(renderer, g->icon_texture, NULL, &g->icon_rect);
         SDL_RenderCopy(renderer, g->pid_texture, NULL, &g->pid_rect);
         SDL_RenderCopy(renderer, g->name_texture, NULL, &g->name_rect);
