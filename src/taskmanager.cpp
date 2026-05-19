@@ -11,6 +11,7 @@
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
+#include <SDL2/SDL_image.h>
 
 #define WIDTH 1000
 #define HEIGHT 800
@@ -19,17 +20,20 @@ typedef struct ProcessInfo
 {
     int pid;
     std::string name;
+    bool foreground;
     float cpu_percent;
     long memory_kb;
 } ProcessInfo;
 
 typedef struct GProcess // graphical process
 {
+    SDL_Texture* icon_texture;
     SDL_Texture* pid_texture;
     SDL_Texture* name_texture;
     SDL_Texture* cpu_texture;
     SDL_Texture* mem_texture;
 
+    SDL_Rect icon_rect;
     SDL_Rect pid_rect;
     SDL_Rect name_rect;
     SDL_Rect cpu_rect;
@@ -39,6 +43,9 @@ typedef struct GProcess // graphical process
 typedef struct AppData
 {
     TTF_Font* font;
+
+    SDL_Texture* foreground_icon;
+    SDL_Texture* background_icon;
 
     std::vector<ProcessInfo*> processes;
     std::vector<GProcess*> graphics;
@@ -59,6 +66,7 @@ int main(int argc, char* argv[])
 {
     // Initialize SDL2 (including image and font loaders)
     SDL_Init(SDL_INIT_VIDEO);
+    IMG_Init(IMG_INIT_PNG);
     TTF_Init();
 
     // Create window and renderer
@@ -71,6 +79,15 @@ int main(int argc, char* argv[])
 
     // Load font
     data.font = TTF_OpenFont("resrc/fonts/OpenSans-Regular.ttf", 24);
+
+    // Load icons
+    SDL_Surface* fg_surface = IMG_Load("resrc/images/foreground_icon.png");
+    data.foreground_icon = SDL_CreateTextureFromSurface(renderer, fg_surface);
+    SDL_FreeSurface(fg_surface);
+
+    SDL_Surface* bg_surface = IMG_Load("resrc/images/background_icon.png");
+    data.background_icon = SDL_CreateTextureFromSurface(renderer, bg_surface);
+    SDL_FreeSurface(bg_surface);
 
     // Load the processes
     loadProcesses(&data);
@@ -120,6 +137,9 @@ int main(int argc, char* argv[])
     // Cleanup
     clearGraphics(&data);
     clearProcesses(&data);
+
+    SDL_DestroyTexture(data.foreground_icon);
+    SDL_DestroyTexture(data.background_icon);
 
     TTF_CloseFont(data.font);
 
@@ -177,7 +197,7 @@ void loadProcesses(AppData* data)
     clearProcesses(data);
 
     // Run the ps command
-    FILE* pipe = popen("ps -eo pid,comm,pcpu,rss --no-headers --sort=-pcpu", "r");
+    FILE* pipe = popen("ps -eo pid,stat,comm,pcpu,rss --no-headers --sort=-pcpu", "r");
 
     // If ps failed, stop
     if (!pipe)
@@ -196,8 +216,11 @@ void loadProcesses(AppData* data)
         ProcessInfo* process = new ProcessInfo();
 
         // Parse:
-        // PID COMMAND CPU MEMORY
-        ss >> process->pid >> process->name >> process->cpu_percent >> process->memory_kb;
+        // PID STAT COMMAND CPU MEMORY
+        std::string stat;
+        ss >> process->pid >> stat >> process->name >> process->cpu_percent >> process->memory_kb;
+
+        process->foreground = (stat.find('+') != std::string::npos);
 
         // Add the process to our list
         data->processes.push_back(process);
@@ -236,6 +259,16 @@ void buildGraphics(SDL_Renderer* renderer, AppData* data) // converts the proces
         // Create graphical object
         GProcess* g = new GProcess();
 
+        // Assign icons
+        if (p->foreground)
+        {
+            g->icon_texture = data->foreground_icon;
+        }
+        else
+        {
+            g->icon_texture = data->background_icon;
+        }
+
         // Create textures
         g->pid_texture = createText(renderer, data->font, std::to_string(p->pid), color);
         g->name_texture = createText(renderer, data->font, p->name, color);
@@ -243,22 +276,27 @@ void buildGraphics(SDL_Renderer* renderer, AppData* data) // converts the proces
         g->mem_texture = createText(renderer, data->font, std::to_string(p->memory_kb) + " KB", color);
 
         // Position rectangles
-        g->pid_rect.x = 20;
+        g->icon_rect.x = 10;
+        g->icon_rect.y = 70 + i * 35 + data->scroll_offset;
+        g->icon_rect.w = 24;
+        g->icon_rect.h = 24;
+
+        g->pid_rect.x = 50;
         g->pid_rect.y = 70 + i * 35 + data->scroll_offset;
         g->pid_rect.w = 0;
         g->pid_rect.h = 0;
 
-        g->name_rect.x = 150;
+        g->name_rect.x = 170;
         g->name_rect.y = 70 + i * 35 + data->scroll_offset;
         g->name_rect.w = 0;
         g->name_rect.h = 0;
 
-        g->cpu_rect.x = 450;
+        g->cpu_rect.x = 470;
         g->cpu_rect.y = 70 + i * 35 + data->scroll_offset;
         g->cpu_rect.w = 0;
         g->cpu_rect.h = 0;
         
-        g->mem_rect.x = 700;
+        g->mem_rect.x = 720;
         g->mem_rect.y = 70 + i * 35 + data->scroll_offset;
         g->mem_rect.w = 0;
         g->mem_rect.h = 0;
@@ -301,10 +339,10 @@ void render(SDL_Renderer* renderer, AppData* data) // draws everything
     SDL_Texture* cpu_label = createText(renderer, data->font, "CPU %", black);
     SDL_Texture* mem_label = createText(renderer, data->font, "Memory Usage", black);
 
-    SDL_Rect pid_rect = {20, 40, 0, 0};
-    SDL_Rect name_rect = {150, 40, 0, 0};
-    SDL_Rect cpu_rect = {450, 40, 0, 0};
-    SDL_Rect mem_rect = {700, 40, 0, 0};
+    SDL_Rect pid_rect = {50, 40, 0, 0};
+    SDL_Rect name_rect = {170, 40, 0, 0};
+    SDL_Rect cpu_rect = {470, 40, 0, 0};
+    SDL_Rect mem_rect = {720, 40, 0, 0};
 
     SDL_QueryTexture(pid_label, NULL, NULL, &pid_rect.w, &pid_rect.h);
     SDL_QueryTexture(name_label, NULL, NULL, &name_rect.w, &name_rect.h);
@@ -324,6 +362,7 @@ void render(SDL_Renderer* renderer, AppData* data) // draws everything
     // Draw processes
     for (GProcess* g : data->graphics)
     {
+        SDL_RenderCopy(renderer, g->icon_texture, NULL, &g->icon_rect);
         SDL_RenderCopy(renderer, g->pid_texture, NULL, &g->pid_rect);
         SDL_RenderCopy(renderer, g->name_texture, NULL, &g->name_rect);
         SDL_RenderCopy(renderer, g->cpu_texture, NULL, &g->cpu_rect);
