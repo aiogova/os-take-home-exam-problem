@@ -16,6 +16,12 @@
 #define WIDTH 1000
 #define HEIGHT 800
 
+enum SortMode
+{
+    SORT_CPU,
+    SORT_MEMORY
+};
+
 typedef struct ProcessInfo
 {
     int pid;
@@ -53,10 +59,13 @@ typedef struct AppData
     std::vector<GProcess*> graphics;
 
     int scroll_offset = 0;
+
+    SortMode current_sort = SORT_CPU;
 } AppData;
 
 bool isNumber(const std::string& str);
-bool compareProcesses(ProcessInfo* a, ProcessInfo* b);
+bool compareCPU(ProcessInfo* a, ProcessInfo* b);
+bool compareMemory(ProcessInfo* a, ProcessInfo* b);
 void clearGraphics(AppData* data);
 void clearProcesses(AppData* data);
 void loadProcesses(AppData* data);
@@ -112,6 +121,32 @@ int main(int argc, char* argv[])
                 running = false;
             }
 
+            if (event.type == SDL_MOUSEBUTTONDOWN)
+            {
+                int mouse_x = event.button.x;
+                int mouse_y = event.button.y;
+
+                // CPU button
+                if (mouse_x >= 20 && mouse_x <= 200 &&
+                    mouse_y >= 45 && mouse_y <= 85)
+                {
+                    data.current_sort = SORT_CPU;
+
+                    loadProcesses(&data);
+                    buildGraphics(renderer, &data);
+                }
+
+                // Memory button
+                if (mouse_x >= 220 && mouse_x <= 440 &&
+                    mouse_y >= 45 && mouse_y <= 85)
+                {
+                    data.current_sort = SORT_MEMORY;
+
+                    loadProcesses(&data);
+                    buildGraphics(renderer, &data);
+                }
+            }
+
             if (event.type == SDL_MOUSEWHEEL)
             {
                 data.scroll_offset += event.wheel.y * 20;
@@ -164,7 +199,12 @@ bool isNumber(const std::string& str)
     return true;
 }
 
-bool compareProcesses(ProcessInfo* a, ProcessInfo* b)
+bool compareCPU(ProcessInfo* a, ProcessInfo* b)
+{
+    return a->cpu_percent > b->cpu_percent;
+}
+
+bool compareMemory(ProcessInfo* a, ProcessInfo* b)
 {
     return a->memory_kb > b->memory_kb;
 }
@@ -199,7 +239,7 @@ void loadProcesses(AppData* data)
     clearProcesses(data);
 
     // Run the ps command
-    FILE* pipe = popen("ps -eo user,pid,stat,comm,pcpu,rss --no-headers --sort=-pcpu", "r");
+    FILE* pipe = popen("ps -eo user,pid,stat,comm,pcpu,rss --no-headers", "r");
 
     // If ps failed, stop
     if (!pipe)
@@ -232,7 +272,14 @@ void loadProcesses(AppData* data)
     pclose(pipe);
 
     // Sort the processes
-    // std::sort(data->processes.begin(), data->processes.end(), compareProcesses);
+    if (data->current_sort == SORT_CPU)
+    {
+        std::sort(data->processes.begin(), data->processes.end(), compareCPU);
+    }
+    else
+    {
+        std::sort(data->processes.begin(), data->processes.end(), compareMemory);
+    }
 }
 
 SDL_Texture* createText(SDL_Renderer* renderer, TTF_Font* font, std::string text, SDL_Color color) // convert text to SDL texture
@@ -280,27 +327,27 @@ void buildGraphics(SDL_Renderer* renderer, AppData* data) // converts the proces
 
         // Position rectangles
         g->icon_rect.x = 10;
-        g->icon_rect.y = 70 + i * 35 + data->scroll_offset;
+        g->icon_rect.y = 120 + i * 35 + data->scroll_offset;
         g->icon_rect.w = 24;
         g->icon_rect.h = 24;
 
         g->pid_rect.x = 50;
-        g->pid_rect.y = 70 + i * 35 + data->scroll_offset;
+        g->pid_rect.y = 120 + i * 35 + data->scroll_offset;
         g->pid_rect.w = 0;
         g->pid_rect.h = 0;
 
         g->name_rect.x = 170;
-        g->name_rect.y = 70 + i * 35 + data->scroll_offset;
+        g->name_rect.y = 120 + i * 35 + data->scroll_offset;
         g->name_rect.w = 0;
         g->name_rect.h = 0;
 
         g->cpu_rect.x = 470;
-        g->cpu_rect.y = 70 + i * 35 + data->scroll_offset;
+        g->cpu_rect.y = 120 + i * 35 + data->scroll_offset;
         g->cpu_rect.w = 0;
         g->cpu_rect.h = 0;
         
         g->mem_rect.x = 720;
-        g->mem_rect.y = 70 + i * 35 + data->scroll_offset;
+        g->mem_rect.y = 120 + i * 35 + data->scroll_offset;
         g->mem_rect.w = 0;
         g->mem_rect.h = 0;
         
@@ -324,6 +371,55 @@ void render(SDL_Renderer* renderer, AppData* data) // draws everything
 
     SDL_Color black = {0,0,0};
 
+    // Sort buttons
+    SDL_Rect cpu_button = {20, 45, 180, 40};
+    SDL_Rect mem_button = {220, 45, 220, 40};
+
+    // CPU button color
+    if (data->current_sort == SORT_CPU)
+    {
+        SDL_SetRenderDrawColor(renderer, 120, 170, 255, 255);
+    }
+    else
+    {
+        SDL_SetRenderDrawColor(renderer, 180, 210, 255, 255);
+    }
+
+    SDL_RenderFillRect(renderer, &cpu_button);
+
+    // Memory button color
+    if (data->current_sort == SORT_MEMORY)
+    {
+        SDL_SetRenderDrawColor(renderer, 120, 170, 255, 255);
+    }
+    else
+    {
+        SDL_SetRenderDrawColor(renderer, 180, 210, 255, 255);
+    }
+
+    SDL_RenderFillRect(renderer, &mem_button);
+
+    SDL_Texture* cpu_sort_text =
+    createText(renderer, data->font, "Sort by CPU", black);
+
+    SDL_Texture* mem_sort_text =
+        createText(renderer, data->font, "Sort by Memory", black);
+
+    SDL_Rect cpu_sort_rect = {35, 55, 0, 0};
+    SDL_Rect mem_sort_rect = {235, 55, 0, 0};
+
+    SDL_QueryTexture(cpu_sort_text, NULL, NULL,
+        &cpu_sort_rect.w, &cpu_sort_rect.h);
+
+    SDL_QueryTexture(mem_sort_text, NULL, NULL,
+        &mem_sort_rect.w, &mem_sort_rect.h);
+
+    SDL_RenderCopy(renderer, cpu_sort_text, NULL, &cpu_sort_rect);
+    SDL_RenderCopy(renderer, mem_sort_text, NULL, &mem_sort_rect);
+
+    SDL_DestroyTexture(cpu_sort_text);
+    SDL_DestroyTexture(mem_sort_text);
+
     // Header
     SDL_Texture* title = createText(renderer, data->font, "Task Manager", black);
 
@@ -342,10 +438,10 @@ void render(SDL_Renderer* renderer, AppData* data) // draws everything
     SDL_Texture* cpu_label = createText(renderer, data->font, "CPU %", black);
     SDL_Texture* mem_label = createText(renderer, data->font, "Memory Usage", black);
 
-    SDL_Rect pid_rect = {50, 40, 0, 0};
-    SDL_Rect name_rect = {170, 40, 0, 0};
-    SDL_Rect cpu_rect = {470, 40, 0, 0};
-    SDL_Rect mem_rect = {720, 40, 0, 0};
+    SDL_Rect pid_rect = {50, 85, 0, 0};
+    SDL_Rect name_rect = {170, 85, 0, 0};
+    SDL_Rect cpu_rect = {470, 85, 0, 0};
+    SDL_Rect mem_rect = {720, 85, 0, 0};
 
     SDL_QueryTexture(pid_label, NULL, NULL, &pid_rect.w, &pid_rect.h);
     SDL_QueryTexture(name_label, NULL, NULL, &name_rect.w, &name_rect.h);
