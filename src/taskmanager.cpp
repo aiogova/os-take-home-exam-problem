@@ -13,7 +13,7 @@
 #include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_image.h>
 
-#define WIDTH 1000
+#define WIDTH 1100
 #define HEIGHT 800
 
 enum SortMode
@@ -127,7 +127,7 @@ int main(int argc, char* argv[])
         // Check if hovering over buttons
         bool hovering_button = false;
 
-        if ((mouse_x >= 20 && mouse_x <= 200 && mouse_y >= 45 + data.scroll_offset && mouse_y <= 85 + data.scroll_offset) || (mouse_x >= 220 && mouse_x <= 440 && mouse_y >= 45 + data.scroll_offset && mouse_y <= 85 + data.scroll_offset) || (mouse_x >= 460 && mouse_x <= 680 && mouse_y >= 45 && mouse_y <= 85))
+        if ((mouse_x >= 420 && mouse_x <= (420 + 190) && mouse_y >= 45 + data.scroll_offset && mouse_y <= 85 + data.scroll_offset) || (mouse_x >= 620 && mouse_x <= (620 + 190) && mouse_y >= 45 + data.scroll_offset && mouse_y <= 85 + data.scroll_offset) || (mouse_x >= 820 && mouse_x <= (820 + 190) && mouse_y >= 45 + data.scroll_offset && mouse_y <= 85 + data.scroll_offset))
         {
             hovering_button = true;
         }
@@ -157,7 +157,7 @@ int main(int argc, char* argv[])
                 int mouse_y = event.button.y;
 
                 // CPU button
-                if (mouse_x >= 20 && mouse_x <= 200 && mouse_y >= 45 + data.scroll_offset && mouse_y <= 85 + data.scroll_offset)
+                if (mouse_x >= 420 && mouse_x <= (420 + 190) && mouse_y >= 45 + data.scroll_offset && mouse_y <= 85 + data.scroll_offset)
                 {
                     data.current_sort = SORT_CPU;
 
@@ -166,7 +166,7 @@ int main(int argc, char* argv[])
                 }
 
                 // Memory button
-                if (mouse_x >= 220 && mouse_x <= 440 && mouse_y >= 45 + data.scroll_offset && mouse_y <= 85 + data.scroll_offset)
+                if (mouse_x >= 620 && mouse_x <= (620 + 190) && mouse_y >= 45 + data.scroll_offset && mouse_y <= 85 + data.scroll_offset)
                 {
                     data.current_sort = SORT_MEMORY;
 
@@ -175,7 +175,7 @@ int main(int argc, char* argv[])
                 }
 
                 // Disk button
-                if (mouse_x >= 460 && mouse_x <= 680 && mouse_y >= 45 + data.scroll_offset && mouse_y <= 85 + data.scroll_offset)
+                if (mouse_x >= 820 && mouse_x <= (820 + 190) && mouse_y >= 45 + data.scroll_offset && mouse_y <= 85 + data.scroll_offset)
                 {
                     data.current_sort = SORT_DISK;
 
@@ -490,9 +490,9 @@ void render(SDL_Renderer* renderer, AppData* data) // draws everything
     SDL_Color black = {0,0,0};
 
     // Sort buttons
-    SDL_Rect cpu_button = {20, 45 + data->scroll_offset, 180, 40};
-    SDL_Rect mem_button = {220, 45 + data->scroll_offset, 220, 40};
-    SDL_Rect disk_button = {460, 45 + data->scroll_offset, 220, 40};
+    SDL_Rect cpu_button = {420, 45 + data->scroll_offset, 190, 40};
+    SDL_Rect mem_button = {620, 45 + data->scroll_offset, 190, 40};
+    SDL_Rect disk_button = {820, 45 + data->scroll_offset, 190, 40};
 
     // CPU button color
     if (data->current_sort == SORT_CPU)
@@ -534,9 +534,9 @@ void render(SDL_Renderer* renderer, AppData* data) // draws everything
     SDL_Texture* mem_sort_text = createText(renderer, data->font, "Sort by Memory", black);
     SDL_Texture* disk_sort_text = createText(renderer, data->font, "Sort by Disk", black);
 
-    SDL_Rect cpu_sort_rect = {35, 55 + data->scroll_offset, 0, 0};
-    SDL_Rect mem_sort_rect = {235, 55 + data->scroll_offset, 0, 0};
-    SDL_Rect disk_sort_rect = {475, 55 + data->scroll_offset, 0, 0};
+    SDL_Rect cpu_sort_rect = {425, 55 + data->scroll_offset, 0, 0};
+    SDL_Rect mem_sort_rect = {625, 55 + data->scroll_offset, 0, 0};
+    SDL_Rect disk_sort_rect = {825, 55 + data->scroll_offset, 0, 0};
 
     SDL_QueryTexture(cpu_sort_text, NULL, NULL, &cpu_sort_rect.w, &cpu_sort_rect.h);
     SDL_QueryTexture(mem_sort_text, NULL, NULL, &mem_sort_rect.w, &mem_sort_rect.h);
