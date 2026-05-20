@@ -19,7 +19,8 @@
 enum SortMode
 {
     SORT_CPU,
-    SORT_MEMORY
+    SORT_MEMORY,
+    SORT_DISK
 };
 
 typedef struct ProcessInfo
@@ -69,6 +70,7 @@ typedef struct AppData
 bool isNumber(const std::string& str);
 bool compareCPU(ProcessInfo* a, ProcessInfo* b);
 bool compareMemory(ProcessInfo* a, ProcessInfo* b);
+bool compareDisk(ProcessInfo* a, ProcessInfo* b);
 void clearGraphics(AppData* data);
 void clearProcesses(AppData* data);
 void loadProcesses(AppData* data);
@@ -125,7 +127,7 @@ int main(int argc, char* argv[])
         // Check if hovering over buttons
         bool hovering_button = false;
 
-        if ((mouse_x >= 20 && mouse_x <= 200 && mouse_y >= 45 + data.scroll_offset && mouse_y <= 85 + data.scroll_offset) || (mouse_x >= 220 && mouse_x <= 440 && mouse_y >= 45 + data.scroll_offset && mouse_y <= 85 + data.scroll_offset))
+        if ((mouse_x >= 20 && mouse_x <= 200 && mouse_y >= 45 + data.scroll_offset && mouse_y <= 85 + data.scroll_offset) || (mouse_x >= 220 && mouse_x <= 440 && mouse_y >= 45 + data.scroll_offset && mouse_y <= 85 + data.scroll_offset) || (mouse_x >= 460 && mouse_x <= 680 && mouse_y >= 45 && mouse_y <= 85))
         {
             hovering_button = true;
         }
@@ -167,6 +169,15 @@ int main(int argc, char* argv[])
                 if (mouse_x >= 220 && mouse_x <= 440 && mouse_y >= 45 + data.scroll_offset && mouse_y <= 85 + data.scroll_offset)
                 {
                     data.current_sort = SORT_MEMORY;
+
+                    loadProcesses(&data);
+                    buildGraphics(renderer, &data);
+                }
+
+                // Disk button
+                if (mouse_x >= 460 && mouse_x <= 680 && mouse_y >= 45 + data.scroll_offset && mouse_y <= 85 + data.scroll_offset)
+                {
+                    data.current_sort = SORT_DISK;
 
                     loadProcesses(&data);
                     buildGraphics(renderer, &data);
@@ -254,6 +265,11 @@ bool compareCPU(ProcessInfo* a, ProcessInfo* b)
 bool compareMemory(ProcessInfo* a, ProcessInfo* b)
 {
     return a->memory_kb > b->memory_kb;
+}
+
+bool compareDisk(ProcessInfo* a, ProcessInfo* b)
+{
+    return a->disk_kb > b->disk_kb;
 }
 
 void clearGraphics(AppData* data)
@@ -367,9 +383,13 @@ void loadProcesses(AppData* data)
     {
         std::sort(data->processes.begin(), data->processes.end(), compareCPU);
     }
-    else
+    else if (data->current_sort == SORT_MEMORY)
     {
         std::sort(data->processes.begin(), data->processes.end(), compareMemory);
+    }
+    else
+    {
+        std::sort(data->processes.begin(), data->processes.end(), compareDisk);
     }
 }
 
@@ -472,6 +492,7 @@ void render(SDL_Renderer* renderer, AppData* data) // draws everything
     // Sort buttons
     SDL_Rect cpu_button = {20, 45 + data->scroll_offset, 180, 40};
     SDL_Rect mem_button = {220, 45 + data->scroll_offset, 220, 40};
+    SDL_Rect disk_button = {460, 45 + data->scroll_offset, 220, 40};
 
     // CPU button color
     if (data->current_sort == SORT_CPU)
@@ -497,22 +518,37 @@ void render(SDL_Renderer* renderer, AppData* data) // draws everything
 
     SDL_RenderFillRect(renderer, &mem_button);
 
-    SDL_Texture* cpu_sort_text = createText(renderer, data->font, "Sort by CPU", black);
+    // Disk button color
+    if (data->current_sort == SORT_DISK)
+    {
+        SDL_SetRenderDrawColor(renderer, 120, 170, 255, 255);
+    }
+    else
+    {
+        SDL_SetRenderDrawColor(renderer, 180, 210, 255, 255);
+    }
 
+    SDL_RenderFillRect(renderer, &disk_button);
+
+    SDL_Texture* cpu_sort_text = createText(renderer, data->font, "Sort by CPU", black);
     SDL_Texture* mem_sort_text = createText(renderer, data->font, "Sort by Memory", black);
+    SDL_Texture* disk_sort_text = createText(renderer, data->font, "Sort by Disk", black);
 
     SDL_Rect cpu_sort_rect = {35, 55 + data->scroll_offset, 0, 0};
     SDL_Rect mem_sort_rect = {235, 55 + data->scroll_offset, 0, 0};
+    SDL_Rect disk_sort_rect = {475, 55 + data->scroll_offset, 0, 0};
 
     SDL_QueryTexture(cpu_sort_text, NULL, NULL, &cpu_sort_rect.w, &cpu_sort_rect.h);
-
     SDL_QueryTexture(mem_sort_text, NULL, NULL, &mem_sort_rect.w, &mem_sort_rect.h);
+    SDL_QueryTexture(disk_sort_text, NULL, NULL, &disk_sort_rect.w, &disk_sort_rect.h);
 
     SDL_RenderCopy(renderer, cpu_sort_text, NULL, &cpu_sort_rect);
     SDL_RenderCopy(renderer, mem_sort_text, NULL, &mem_sort_rect);
+    SDL_RenderCopy(renderer, disk_sort_text, NULL, &disk_sort_rect);
 
     SDL_DestroyTexture(cpu_sort_text);
     SDL_DestroyTexture(mem_sort_text);
+    SDL_DestroyTexture(disk_sort_text);
 
     // Header
     SDL_Texture* title = createText(renderer, data->font, "OS Task Manager", black);
