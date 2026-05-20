@@ -31,6 +31,7 @@ typedef struct ProcessInfo
     bool user_process;
     float cpu_percent;
     long memory_kb;
+    long disk_kb;
 } ProcessInfo;
 
 typedef struct GProcess // graphical process
@@ -40,12 +41,14 @@ typedef struct GProcess // graphical process
     SDL_Texture* name_texture;
     SDL_Texture* cpu_texture;
     SDL_Texture* mem_texture;
+    SDL_Texture* disk_texture;
 
     SDL_Rect icon_rect;
     SDL_Rect pid_rect;
     SDL_Rect name_rect;
     SDL_Rect cpu_rect;
     SDL_Rect mem_rect;
+    SDL_Rect disk_rect;
 } GProcess;
 
 typedef struct AppData
@@ -261,6 +264,7 @@ void clearGraphics(AppData* data)
         SDL_DestroyTexture(g->name_texture);
         SDL_DestroyTexture(g->cpu_texture);
         SDL_DestroyTexture(g->mem_texture);
+        SDL_DestroyTexture(g->disk_texture);
         delete g;
     }
 
@@ -308,6 +312,49 @@ void loadProcesses(AppData* data)
 
         process->user_process = (process->user != "root");
         process->foreground = (stat.find('+') != std::string::npos);
+
+        // Default disk usage
+        process->disk_kb = 0;
+
+        // Build /proc/[pid]/io path
+        std::string io_path =
+            "/proc/" + std::to_string(process->pid) + "/io";
+
+        std::ifstream io_file(io_path);
+
+        if (io_file.is_open())
+        {
+            std::string io_line;
+
+            while (std::getline(io_file, io_line))
+            {
+                // Read bytes from disk
+                if (io_line.rfind("read_bytes:", 0) == 0)
+                {
+                    std::stringstream io_ss(io_line);
+
+                    std::string temp;
+                    long read_bytes;
+
+                    io_ss >> temp >> read_bytes;
+
+                    process->disk_kb += read_bytes / 1024;
+                }
+
+                // Written bytes to disk
+                if (io_line.rfind("write_bytes:", 0) == 0)
+                {
+                    std::stringstream io_ss(io_line);
+
+                    std::string temp;
+                    long write_bytes;
+
+                    io_ss >> temp >> write_bytes;
+
+                    process->disk_kb += write_bytes / 1024;
+                }
+            }
+        }
 
         // Add the process to our list
         data->processes.push_back(process);
@@ -368,6 +415,7 @@ void buildGraphics(SDL_Renderer* renderer, AppData* data) // converts the proces
         g->name_texture = createText(renderer, data->font, p->name, color);
         g->cpu_texture = createText(renderer, data->font, std::to_string(p->cpu_percent) + "%", color);
         g->mem_texture = createText(renderer, data->font, std::to_string(p->memory_kb) + " KB", color);
+        g->disk_texture = createText(renderer, data->font, std::to_string(p->disk_kb) + " KB", color);
 
         // Position rectangles
         g->icon_rect.x = 10;
@@ -385,20 +433,26 @@ void buildGraphics(SDL_Renderer* renderer, AppData* data) // converts the proces
         g->name_rect.w = 0;
         g->name_rect.h = 0;
 
-        g->cpu_rect.x = 470;
+        g->cpu_rect.x = 420;
         g->cpu_rect.y = 120 + i * 35 + data->scroll_offset;
         g->cpu_rect.w = 0;
         g->cpu_rect.h = 0;
         
-        g->mem_rect.x = 720;
+        g->mem_rect.x = 620;
         g->mem_rect.y = 120 + i * 35 + data->scroll_offset;
         g->mem_rect.w = 0;
         g->mem_rect.h = 0;
+
+        g->disk_rect.x = 820;
+        g->disk_rect.y = 120 + i * 35 + data->scroll_offset;
+        g->disk_rect.w = 0;
+        g->disk_rect.h = 0;
         
         SDL_QueryTexture(g->pid_texture, NULL, NULL, &g->pid_rect.w, &g->pid_rect.h);
         SDL_QueryTexture(g->name_texture, NULL, NULL, &g->name_rect.w, &g->name_rect.h);
         SDL_QueryTexture(g->cpu_texture, NULL, NULL, &g->cpu_rect.w, &g->cpu_rect.h);
         SDL_QueryTexture(g->mem_texture, NULL, NULL, &g->mem_rect.w, &g->mem_rect.h);
+        SDL_QueryTexture(g->disk_texture, NULL, NULL, &g->disk_rect.w, &g->disk_rect.h);
 
         // Store graphical entry
         data->graphics.push_back(g);
@@ -477,26 +531,31 @@ void render(SDL_Renderer* renderer, AppData* data) // draws everything
     SDL_Texture* name_label = createText(renderer, data->font, "Process Name", black);
     SDL_Texture* cpu_label = createText(renderer, data->font, "CPU %", black);
     SDL_Texture* mem_label = createText(renderer, data->font, "Memory Usage", black);
+    SDL_Texture* disk_label = createText(renderer, data->font, "Disk I/O", black);
 
     SDL_Rect pid_rect = {50, 85 + data->scroll_offset, 0, 0};
     SDL_Rect name_rect = {170, 85 + data->scroll_offset, 0, 0};
-    SDL_Rect cpu_rect = {470, 85 + data->scroll_offset, 0, 0};
-    SDL_Rect mem_rect = {720, 85 + data->scroll_offset, 0, 0};
+    SDL_Rect cpu_rect = {420, 85 + data->scroll_offset, 0, 0};
+    SDL_Rect mem_rect = {620, 85 + data->scroll_offset, 0, 0};
+    SDL_Rect disk_rect = {820, 85 + data->scroll_offset, 0, 0};
 
     SDL_QueryTexture(pid_label, NULL, NULL, &pid_rect.w, &pid_rect.h);
     SDL_QueryTexture(name_label, NULL, NULL, &name_rect.w, &name_rect.h);
     SDL_QueryTexture(cpu_label, NULL, NULL, &cpu_rect.w, &cpu_rect.h);
     SDL_QueryTexture(mem_label, NULL, NULL, &mem_rect.w, &mem_rect.h);
+    SDL_QueryTexture(disk_label, NULL, NULL, &disk_rect.w, &disk_rect.h);
 
     SDL_RenderCopy(renderer, pid_label, NULL, &pid_rect);
     SDL_RenderCopy(renderer, name_label, NULL, &name_rect);
     SDL_RenderCopy(renderer, cpu_label, NULL, &cpu_rect);
     SDL_RenderCopy(renderer, mem_label, NULL, &mem_rect);
+    SDL_RenderCopy(renderer, disk_label, NULL, &disk_rect);
 
     SDL_DestroyTexture(pid_label);
     SDL_DestroyTexture(name_label);
     SDL_DestroyTexture(cpu_label);
     SDL_DestroyTexture(mem_label);
+    SDL_DestroyTexture(disk_label);
 
     // Draw processes
     for (int i = 0; i < data->graphics.size(); i++)
@@ -528,6 +587,7 @@ void render(SDL_Renderer* renderer, AppData* data) // draws everything
         SDL_RenderCopy(renderer, g->name_texture, NULL, &g->name_rect);
         SDL_RenderCopy(renderer, g->cpu_texture, NULL, &g->cpu_rect);
         SDL_RenderCopy(renderer, g->mem_texture, NULL, &g->mem_rect);
+        SDL_RenderCopy(renderer, g->disk_texture, NULL, &g->disk_rect);
     }
 
     // Display the rendered frame on the screen
